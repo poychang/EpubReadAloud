@@ -1,0 +1,199 @@
+﻿@page "/"
+@using System.Diagnostics;
+@using System.IO
+@using HtmlAgilityPack
+@using System.Text
+@using Tewr.Blazor.FileReader
+@using System.Threading;
+@using VersOne.Epub
+@inject IFileReaderService fileReaderService
+@inject IJSRuntime CurrentJSRuntime
+
+<h1>Hello, Epub Read Aloud!</h1>
+<br />
+
+<input type="file" @ref=inputElement />
+<button @onclick=ReadFile class="btn btn-primary">Read file</button>
+<button @onclick=ClearFile class="btn btn-primary">Clear</button>
+<button @onclick=CancelFile disabled=@IsCancelDisabled class="btn btn-primary">Cancel</button>
+<br />
+<br />
+<progress max="@max" value="@value" />
+<br />
+<textarea style="max-width: 100%;" cols="50" rows="10">@Output</textarea>
+
+<p>@EpubContent</p>
+
+@code {
+    private static string nl = Environment.NewLine;
+    [Parameter]
+    public int BufferSize { get; set; } = 20480;
+    public long max;
+    public long value;
+    ElementReference inputElement;
+    public System.Threading.CancellationTokenSource cancellationTokenSource;
+    string Output { get; set; }
+    string EpubContent { get; set; }
+
+    public bool CanCancel { get; set; }
+    public bool IsCancelDisabled => !CanCancel;
+
+    public async Task ClearFile()
+    {
+        await fileReaderService.CreateReference(inputElement).ClearValue();
+    }
+
+    public async Task ReadFile()
+    {
+        max = 0;
+        value = 0;
+        Output = string.Empty;
+        this.StateHasChanged();
+        var files = await fileReaderService.CreateReference(inputElement).EnumerateFilesAsync();
+        foreach (var file in files)
+        {
+            var fileInfo = await file.ReadFileInfoAsync();
+            max = fileInfo.Size;
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            Output += $"{nameof(IFileInfo)}.{nameof(fileInfo.Name)}: {fileInfo.Name}{nl}";
+            Output += $"{nameof(IFileInfo)}.{nameof(fileInfo.Size)}: {fileInfo.Size}{nl}";
+            Output += $"{nameof(IFileInfo)}.{nameof(fileInfo.Type)}: {fileInfo.Type}{nl}";
+            Output += $"{nameof(IFileInfo)}.{nameof(fileInfo.LastModifiedDate)}: {fileInfo.LastModifiedDate?.ToString() ?? "(N/A)"}{nl}";
+            foreach (var property in fileInfo.NonStandardProperties.Keys)
+            {
+                Output += $"{nameof(IFileInfo)}.{property} (nonstandard): {fileInfo.NonStandardProperties[property]}{nl}";
+            }
+            Output += $"Reading file...";
+            this.StateHasChanged();
+            Console.WriteLine(Output);
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = new System.Threading.CancellationTokenSource();
+            CanCancel = true;
+
+            const int onlyReportProgressAfterThisPercentDelta = 10;
+
+            // Subscribe to progress (change of position)
+            fileInfo.PositionInfo.PositionChanged += (s, e) =>
+            {
+            // (optional) Only report progress in console / progress bar if percentage has moved over 10% since last call to Acknowledge()
+            if (e.PercentageDeltaSinceAcknowledge > onlyReportProgressAfterThisPercentDelta)
+                {
+                    stopwatch.Stop();
+                    Output += $"Read {(e.PositionDeltaSinceAcknowledge)} bytes ({e.Percentage:00}%). {e.Position} / {fileInfo.Size}{nl}";
+                    this.InvokeAsync(this.StateHasChanged);
+                    e.Acknowledge();
+                    value = e.Position;
+                    stopwatch.Start();
+                }
+            };
+
+            try
+            {
+                // PositionStream is a stream created only for this demo,
+                // That does nothing with the data other then updating its position property.
+                var ps = new PositionStream();
+
+                using (var fs = await file.OpenReadAsync())
+                {
+                    await fs.CopyToAsync(ps, BufferSize, cancellationTokenSource.Token);
+                    stopwatch.Stop();
+                }
+
+                value = max;
+                Output += $"Done reading file {fileInfo.Name} - {fileInfo.Size} bytes in {stopwatch.ElapsedMilliseconds}ms.{nl}.";
+                this.StateHasChanged();
+            }
+            catch (OperationCanceledException)
+            {
+                Output += $"Operation was cancelled";
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1);
+            }
+            finally
+            {
+                CanCancel = false;
+            }
+
+            try
+            {
+                using var ms = await file.CreateMemoryStreamAsync();
+                //Output += System.Text.Encoding.Default.GetString(ms.ToArray());
+                var book = await EpubReader.ReadBookAsync(ms);
+                foreach (var textContentFile in book.ReadingOrder.Skip(10).Take(3))
+                {
+                    var htmlDocument = new HtmlDocument();
+                    htmlDocument.LoadHtml(textContentFile.Content);
+                    var contentText = new StringBuilder();
+                    foreach (var node in htmlDocument.DocumentNode.SelectNodes("//text()"))
+                    {
+                        contentText.AppendLine(node.InnerText.Trim());
+                    }
+                    EpubContent += contentText.ToString();
+                }
+            }
+            catch (Exception ex)
+            {
+                Output += ex.Message;
+            }
+        }
+    }
+
+    public async Task CancelFile()
+    {
+        Output += $"Cancel requested.{nl}";
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(1);
+        cancellationTokenSource.Cancel();
+    }
+
+    /// <summary>
+    /// Writable test Stream that does nothing other than setting it's Position property
+    /// </summary>
+    public class PositionStream : Stream
+    {
+
+        public override bool CanRead => false;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => true;
+
+        public override long Length => throw new NotImplementedException();
+
+        public override long Position { get; set; }
+
+        public override void Flush()
+        {
+            // No-op
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            Position += count;
+        }
+    }
+}
+
