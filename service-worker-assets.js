@@ -1,11 +1,19 @@
 ﻿self.assetsManifest = {
   "assets": [
     {
+      "hash": "sha256-47DEQpj8HBSa+\/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+      "url": ".nojekyll"
+    },
+    {
+      "hash": "sha256-G0nvkOJ40Pf9lqELAE7xv9tgDKHy6dTsNngqNu2dh30=",
+      "url": "404.html"
+    },
+    {
       "hash": "sha256-8aM9R9K90X6h+KPDW4OzrEh071mAs7dvAQxjBxAZQAc=",
       "url": "css\/app.css"
     },
     {
-      "hash": "sha256-o+AsfCHj7A1M5Xgm1kJmZiGEIvMQEzQqrXz2072Gkkg=",
+      "hash": "sha256-6+V41dbckcVzDpvs9o7Ao2XI\/R3jrp2QIFkR0Zz99rc=",
       "url": "css\/bootstrap\/bootstrap.css"
     },
     {
@@ -13,7 +21,7 @@
       "url": "css\/bootstrap\/bootstrap.css.map"
     },
     {
-      "hash": "sha256-YvdLHPgkqJ8DVUxjjnGVlMMJtNimJ6dYkowFFvp4kKs=",
+      "hash": "sha256-6iAyWcn3SwMvqDPqKErE2oybgWngxxsUoWwGBav0Okg=",
       "url": "css\/bootstrap\/bootstrap.min.css"
     },
     {
@@ -57,6 +65,10 @@
       "url": "css\/open-iconic\/README.md"
     },
     {
+      "hash": "sha256-M8FQ1Iwes5W4pr2FqCgsWAi5Yd3mnRf73TJTKtCvPrw=",
+      "url": "decode.js"
+    },
+    {
       "hash": "sha256-Jtxf9L+5ITKRc1gIRl4VbUpGkRNfOBXjYTdhJD4facM=",
       "url": "favicon.ico"
     },
@@ -65,7 +77,7 @@
       "url": "icon-512.png"
     },
     {
-      "hash": "sha256-2ZTqExdu\/CVcZ8RnxLWIo356xy8vzgk1FCL5pajGjCw=",
+      "hash": "sha256-nUFR9BxTG2s+deMgnK6Oyjk4nsoaMa2G9cx47EYBqbQ=",
       "url": "index.html"
     },
     {
@@ -405,5 +417,5 @@
       "url": "_framework\/blazor.webassembly.js"
     }
   ],
-  "version": "WfSej5Xb"
+  "version": "c8vCwZI7"
 };
